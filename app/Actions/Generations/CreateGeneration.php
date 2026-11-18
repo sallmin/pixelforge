@@ -3,6 +3,7 @@
 namespace App\Actions\Generations;
 
 use App\Actions\Billing\EstimateCost;
+use App\Actions\Billing\Ledger;
 use App\Billing\Quality;
 use App\Billing\Size;
 use App\Generations\Status;
@@ -10,12 +11,14 @@ use App\Jobs\SendGeneration;
 use App\Models\Generation;
 use App\Models\User;
 use App\Pixelforge\Client;
+use Illuminate\Support\Facades\DB;
 
 final class CreateGeneration
 {
     public function __construct(
         private Client $client,
         private EstimateCost $estimate,
+        private Ledger $ledger,
     ) {}
 
     /**
@@ -36,20 +39,28 @@ final class CreateGeneration
             $this->client->pricing(),
         );
 
-        $generation = Generation::query()->create([
-            'user_id' => $user->id,
-            'status' => Status::Pending,
-            'prompt' => $prompt,
-            'size' => $size,
-            'quality' => $quality,
-            'reference_images' => array_values($referenceImages),
-            'estimate_minimum' => $quote->minimumCharge->nanodollars(),
-            'estimate_maximum' => $quote->maximumCharge->nanodollars(),
-            'provider_cost' => 0,
-            'charged' => 0,
-        ]);
+        $generation = DB::transaction(function () use ($user, $prompt, $size, $quality, $referenceImages, $quote): Generation {
+            $locked = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
 
-        SendGeneration::dispatch($generation->id);
+            $generation = Generation::query()->create([
+                'user_id' => $locked->id,
+                'status' => Status::Pending,
+                'prompt' => $prompt,
+                'size' => $size,
+                'quality' => $quality,
+                'reference_images' => array_values($referenceImages),
+                'estimate_minimum' => $quote->minimumCharge->nanodollars(),
+                'estimate_maximum' => $quote->maximumCharge->nanodollars(),
+                'provider_cost' => 0,
+                'charged' => 0,
+            ]);
+
+            $this->ledger->hold($locked, $generation, $quote->maximumCharge->nanodollars());
+
+            return $generation;
+        });
+
+        SendGeneration::dispatch($generation->id)->afterCommit();
 
         return $generation;
     }

@@ -59,6 +59,27 @@ final class Client
     }
 
     /**
+     * Provider cost per UTC day for this API key. cost_usd is a 9-decimal string.
+     *
+     * @return list<array<string, mixed>>
+     *
+     * @throws ConnectionException
+     */
+    public function usage(): array
+    {
+        $response = Http::pixelforge()->get('usage');
+
+        if (! $response->successful() || ! is_array($response->json('data'))) {
+            throw new RuntimeException('Pixelforge usage is unavailable.');
+        }
+
+        /** @var list<array<string, mixed>> $days */
+        $days = $response->json('data');
+
+        return $days;
+    }
+
+    /**
      * @return array<string, mixed>|null
      *
      * @throws ConnectionException

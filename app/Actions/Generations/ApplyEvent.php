@@ -3,18 +3,23 @@
 namespace App\Actions\Generations;
 
 use App\Actions\Billing\CalculateCost;
+use App\Actions\Billing\Ledger;
 use App\Billing\Rates;
 use App\Billing\TokenUsage;
 use App\Generations\Status;
 use App\Models\Generation;
 use App\Models\GenerationCharge;
+use App\Models\User;
 use App\Models\WebhookEvent;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 final class ApplyEvent
 {
-    public function __construct(private CalculateCost $calculateCost) {}
+    public function __construct(
+        private CalculateCost $calculateCost,
+        private Ledger $ledger,
+    ) {}
 
     /**
      * Move a generation forward from one webhook, charging it at most once.
@@ -142,6 +147,9 @@ final class ApplyEvent
             'provider_cost' => $cost->provider->nanodollars(),
             'charged' => $cost->charge->nanodollars(),
         ]);
+
+        $this->lockOwner($generation);
+        $this->ledger->charge($generation, $cost->charge->nanodollars());
     }
 
     /**
@@ -162,6 +170,14 @@ final class ApplyEvent
             'image_url' => null,
             'completed_at' => is_string($object['completed_at'] ?? null) ? $object['completed_at'] : now(),
         ]);
+
+        $this->lockOwner($generation);
+        $this->ledger->release($generation);
+    }
+
+    private function lockOwner(Generation $generation): void
+    {
+        User::query()->whereKey($generation->user_id)->lockForUpdate()->first();
     }
 
     /**

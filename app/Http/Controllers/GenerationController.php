@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Billing\Ledger;
 use App\Billing\Money;
 use App\Generations\Status;
 use App\Models\Generation;
@@ -31,9 +32,17 @@ class GenerationController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request, Ledger $ledger): Response
     {
-        return Inertia::render('generations/Create');
+        $user = $request->user();
+        $balance = Money::fromNanodollars($user instanceof User ? $ledger->available($user->id) : 0);
+
+        return Inertia::render('generations/Create', [
+            'balance' => [
+                'label' => $balance->label(),
+                'exact' => $balance->exact(),
+            ],
+        ]);
     }
 
     /**

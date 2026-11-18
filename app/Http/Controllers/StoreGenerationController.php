@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Generations\CreateGeneration;
+use App\Billing\InsufficientCredits;
 use App\Billing\Quality;
 use App\Billing\Size;
 use App\Http\Requests\StoreGenerationRequest;
@@ -25,13 +26,17 @@ class StoreGenerationController extends Controller
         /** @var array<int|string, string> $referenceImages */
         $referenceImages = $request->input('reference_images', []);
 
-        $create(
-            $user,
-            $request->string('prompt')->toString(),
-            Size::from($request->string('size')->toString()),
-            Quality::from($request->string('quality')->toString()),
-            $referenceImages,
-        );
+        try {
+            $create(
+                $user,
+                $request->string('prompt')->toString(),
+                Size::from($request->string('size')->toString()),
+                Quality::from($request->string('quality')->toString()),
+                $referenceImages,
+            );
+        } catch (InsufficientCredits $exception) {
+            return back()->withErrors(['balance' => $exception->getMessage()]);
+        }
 
         return to_route('generations.index');
     }

@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\CreditController;
 use App\Http\Controllers\EstimateGenerationController;
 use App\Http\Controllers\GenerationController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\StoreGenerationController;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'Welcome')->name('home');
+Route::get('/', fn () => to_route('login'))->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'Dashboard')->name('dashboard');
@@ -13,6 +15,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('generations/create', [GenerationController::class, 'create'])->name('generations.create');
     Route::get('generations/estimate', EstimateGenerationController::class)->name('generations.estimate');
     Route::post('generations', StoreGenerationController::class)->name('generations.store');
+    Route::get('credits', [CreditController::class, 'index'])->name('credits.index');
+    Route::post('credits', [CreditController::class, 'store'])->name('credits.store');
+    Route::get('reports', ReportController::class)->name('reports');
 });
 
 require __DIR__.'/settings.php';

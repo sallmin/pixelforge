@@ -2,12 +2,15 @@
 
 namespace App\Jobs;
 
+use App\Actions\Billing\Ledger;
 use App\Generations\Status;
 use App\Models\Generation;
+use App\Models\User;
 use App\Pixelforge\Client;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class SendGeneration implements ShouldQueue
@@ -99,12 +102,24 @@ class SendGeneration implements ShouldQueue
 
     private function markFailed(Generation $generation, string $code, string $message): void
     {
-        $generation->update([
-            'status' => Status::Failed,
-            'error_code' => $code,
-            'error_message' => $message,
-            'provider_cost' => 0,
-            'charged' => 0,
-        ]);
+        DB::transaction(function () use ($generation, $code, $message): void {
+            $locked = Generation::query()->whereKey($generation->id)->lockForUpdate()->first();
+
+            if ($locked === null || $locked->status->isFinal()) {
+                return;
+            }
+
+            User::query()->whereKey($locked->user_id)->lockForUpdate()->first();
+
+            $locked->update([
+                'status' => Status::Failed,
+                'error_code' => $code,
+                'error_message' => $message,
+                'provider_cost' => 0,
+                'charged' => 0,
+            ]);
+
+            app(Ledger::class)->release($locked);
+        });
     }
 }

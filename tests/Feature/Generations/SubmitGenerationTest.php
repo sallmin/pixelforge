@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Billing\Ledger;
 use App\Generations\Status;
 use App\Jobs\SendGeneration;
 use App\Models\Generation;
@@ -27,6 +28,7 @@ test('invalid generations are rejected before pixelforge is called', function ()
     Http::preventStrayRequests();
 
     $user = User::factory()->create();
+    fund($user);
 
     $this->actingAs($user)
         ->from(route('dashboard'))
@@ -52,6 +54,7 @@ test('a generation is stored once and sent with its id as the idempotency key', 
     preparePixelforge(Http::response(acceptedGeneration(), 202));
 
     $user = User::factory()->create();
+    fund($user);
 
     $this->actingAs($user)
         ->post(route('generations.store'), generationPayload())
@@ -94,6 +97,7 @@ test('reference image urls are sent with the generation', function () {
     preparePixelforge(Http::response(acceptedGeneration(), 202));
 
     $user = User::factory()->create();
+    fund($user);
 
     $this->actingAs($user)->post(route('generations.store'), generationPayload([
         'reference_images' => ['https://example.com/style.png'],
@@ -113,6 +117,7 @@ test('an overloaded response is retried and still records one generation', funct
         ->push(acceptedGeneration(), 202));
 
     $user = User::factory()->create();
+    fund($user);
 
     $this->actingAs($user)
         ->post(route('generations.store'), generationPayload())
@@ -146,6 +151,7 @@ test('a rate limit releases the job for the retry after delay', function () {
     ], 429, ['Retry-After' => '30']));
 
     $user = User::factory()->create();
+    fund($user);
 
     $this->actingAs($user)->post(route('generations.store'), generationPayload());
 
@@ -171,6 +177,7 @@ test('a short retry after still waits for the backoff', function () {
     ], 429, ['Retry-After' => '2']));
 
     $user = User::factory()->create();
+    fund($user);
     $this->actingAs($user)->post(route('generations.store'), generationPayload());
 
     $generation = Generation::query()->sole();
@@ -191,6 +198,7 @@ test('retries stop after the cap and the generation stays free', function () {
     ], 503, ['Retry-After' => '2']));
 
     $user = User::factory()->create();
+    fund($user);
     $this->actingAs($user)->post(route('generations.store'), generationPayload());
 
     $generation = Generation::query()->sole();
@@ -216,6 +224,7 @@ test('a blocked prompt fails immediately and is free', function () {
     ], 400));
 
     $user = User::factory()->create();
+    fund($user);
 
     $this->actingAs($user)->post(route('generations.store'), generationPayload([
         'prompt' => 'a lighthouse [blocked]',
@@ -240,6 +249,7 @@ test('a daily limit fails immediately', function () {
     ], 429));
 
     $user = User::factory()->create();
+    fund($user);
     $this->actingAs($user)->post(route('generations.store'), generationPayload());
 
     $generation = Generation::query()->sole();
@@ -254,6 +264,7 @@ test('a replayed acceptance updates the same generation', function () {
     preparePixelforge(Http::response(acceptedGeneration(), 202, ['Idempotent-Replayed' => 'true']));
 
     $user = User::factory()->create();
+    fund($user);
     $this->actingAs($user)->post(route('generations.store'), generationPayload());
 
     $generation = Generation::query()->sole();
@@ -263,6 +274,11 @@ test('a replayed acceptance updates the same generation', function () {
         ->and(Generation::query()->count())->toBe(1)
         ->and(generationRequests())->toHaveCount(1);
 });
+
+function fund(User $user): void
+{
+    app(Ledger::class)->purchase($user, 1_000_000_000);
+}
 
 function preparePixelforge(mixed $generations): void
 {

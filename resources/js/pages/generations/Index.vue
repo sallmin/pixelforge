@@ -139,7 +139,9 @@ const badgeClass = (status: string): string => {
 
                     <p v-if="generation.status === 'failed'" class="text-sm text-red-600 dark:text-red-400">
                         {{ generation.error_message }}
-                        You were not charged.
+                        <template v-if="!generation.error_message?.includes('You were not charged')">
+                            You were not charged.
+                        </template>
                     </p>
 
                     <p v-if="generation.usage" class="text-xs text-muted-foreground">

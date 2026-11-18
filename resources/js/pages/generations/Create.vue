@@ -18,6 +18,13 @@ defineOptions({
     },
 });
 
+defineProps<{
+    balance: {
+        label: string;
+        exact: string;
+    };
+}>();
+
 const prompt = ref('');
 const size = ref('1024x1024');
 const quality = ref('medium');
@@ -88,9 +95,14 @@ onMounted(() => {
                 title="Generate"
                 description="Write a prompt, then check the price range before you submit."
             />
-            <Button variant="outline" as-child>
-                <Link href="/generations">History</Link>
-            </Button>
+            <div class="flex items-center gap-2">
+                <Button variant="outline" as-child>
+                    <Link href="/credits" :title="balance.exact">{{ balance.label }}</Link>
+                </Button>
+                <Button variant="outline" as-child>
+                    <Link href="/generations">History</Link>
+                </Button>
+            </div>
         </div>
 
         <Form
@@ -177,6 +189,7 @@ onMounted(() => {
                     <p v-if="estimateError" class="mt-2 text-sm text-red-600 dark:text-red-500">{{ estimateError }}</p>
                 </aside>
 
+                <InputError :message="errors.balance" />
                 <Button type="submit" :disabled="processing">Generate</Button>
             </div>
         </Form>
