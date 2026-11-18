@@ -40,6 +40,52 @@ final readonly class Pricing
         $this->varianceScale = $variance->scale();
     }
 
+    public static function fromApi(string $json): self
+    {
+        $payload = json_decode($json, true);
+
+        if (! is_array($payload) || ! is_array($payload['rates'] ?? null) || ! is_array($payload['tokens'] ?? null)) {
+            throw new InvalidArgumentException('Pixelforge pricing is incomplete.');
+        }
+
+        if (preg_match('/"text_token_variance"\s*:\s*(\d+(?:\.\d+)?)/', $json, $matches) !== 1) {
+            throw new InvalidArgumentException('Pixelforge pricing is missing the text token variance.');
+        }
+
+        /** @var array<string, mixed> $rates */
+        $rates = $payload['rates'];
+        /** @var array<string, mixed> $tokens */
+        $tokens = $payload['tokens'];
+
+        foreach (['input_text_tokens', 'input_image_tokens', 'output_tokens', 'reasoning_tokens'] as $key) {
+            if (! is_string($rates[$key] ?? null)) {
+                throw new InvalidArgumentException('Pixelforge pricing rates must be decimal strings.');
+            }
+        }
+
+        if (! is_int($tokens['characters_per_text_token'] ?? null) || ! is_int($tokens['per_reference_image'] ?? null)) {
+            throw new InvalidArgumentException('Pixelforge pricing token counts are incomplete.');
+        }
+
+        if (! is_array($tokens['output'] ?? null) || ! is_array($tokens['reasoning'] ?? null)) {
+            throw new InvalidArgumentException('Pixelforge pricing token tables are incomplete.');
+        }
+
+        return new self(
+            rates: Rates::perMillion(
+                $rates['input_text_tokens'],
+                $rates['input_image_tokens'],
+                $rates['output_tokens'],
+                $rates['reasoning_tokens'],
+            ),
+            charactersPerTextToken: $tokens['characters_per_text_token'],
+            textTokenVariance: $matches[1],
+            tokensPerReferenceImage: $tokens['per_reference_image'],
+            outputTokens: $tokens['output'],
+            reasoningTokens: $tokens['reasoning'],
+        );
+    }
+
     public function outputTokens(Quality $quality, Size $size): int
     {
         $tokens = $this->outputTokens[$quality->value][$size->value] ?? null;

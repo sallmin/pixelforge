@@ -5,6 +5,7 @@ namespace App\Providers;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -46,5 +47,15 @@ class AppServiceProvider extends ServiceProvider
                 ->uncompromised()
             : null,
         );
+
+        Http::macro('pixelforge', function () {
+            $baseUrl = rtrim((string) config('services.pixelforge.base_url'), '/').'/';
+
+            return Http::baseUrl($baseUrl)
+                ->withToken((string) config('services.pixelforge.api_key'))
+                ->acceptJson()
+                ->connectTimeout(3)
+                ->timeout(10);
+        });
     }
 }
