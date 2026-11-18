@@ -33,6 +33,6 @@ class StoreGenerationController extends Controller
             $referenceImages,
         );
 
-        return to_route('dashboard');
+        return to_route('generations.index');
     }
 }

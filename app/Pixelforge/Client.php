@@ -20,15 +20,17 @@ final class Client
 
     public function pricing(): Pricing
     {
-        return Cache::remember('pixelforge.pricing', now()->addMinutes(5), function (): Pricing {
+        $body = Cache::remember('pixelforge.pricing.body', now()->addMinutes(5), function (): string {
             $response = Http::pixelforge()->get('pricing');
 
             if (! $response->successful()) {
                 throw new RuntimeException('Pixelforge pricing is unavailable.');
             }
 
-            return Pricing::fromApi($response->body());
+            return $response->body();
         });
+
+        return Pricing::fromApi($body);
     }
 
     /**
@@ -54,6 +56,24 @@ final class Client
             ->post('generations', $payload);
 
         return $this->submission($response);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     *
+     * @throws ConnectionException
+     */
+    public function generation(string $providerId): ?array
+    {
+        $response = Http::pixelforge()->get('generations/'.$providerId);
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        $object = $response->json();
+
+        return is_array($object) ? $object : null;
     }
 
     private function submission(Response $response): Submission

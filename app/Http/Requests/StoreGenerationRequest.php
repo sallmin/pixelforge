@@ -18,6 +18,22 @@ class StoreGenerationRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $images = $this->input('reference_images', []);
+
+        if (! is_array($images)) {
+            return;
+        }
+
+        $this->merge([
+            'reference_images' => array_values(array_filter(
+                $images,
+                fn (mixed $url): bool => is_string($url) && trim($url) !== '',
+            )),
+        ]);
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *

@@ -14,4 +14,23 @@ enum Status: string
     {
         return $this === self::Succeeded || $this === self::Failed;
     }
+
+    public function canAdvanceTo(self $next): bool
+    {
+        if ($this->isFinal()) {
+            return false;
+        }
+
+        return $next->rank() > $this->rank();
+    }
+
+    public function rank(): int
+    {
+        return match ($this) {
+            self::Pending => 0,
+            self::Queued => 1,
+            self::Processing => 2,
+            self::Succeeded, self::Failed => 3,
+        };
+    }
 }

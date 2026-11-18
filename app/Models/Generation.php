@@ -24,6 +24,7 @@ use Illuminate\Support\Carbon;
  * @property array<int, string> $reference_images
  * @property int $estimate_minimum
  * @property int $estimate_maximum
+ * @property array<string, int>|null $usage
  * @property array<string, string>|null $rates
  * @property int $provider_cost
  * @property int $charged
@@ -45,6 +46,7 @@ use Illuminate\Support\Carbon;
     'reference_images',
     'estimate_minimum',
     'estimate_maximum',
+    'usage',
     'rates',
     'provider_cost',
     'charged',
@@ -77,6 +79,7 @@ class Generation extends Model
             'size' => Size::class,
             'quality' => Quality::class,
             'reference_images' => 'array',
+            'usage' => 'array',
             'rates' => 'array',
             'estimate_minimum' => 'integer',
             'estimate_maximum' => 'integer',

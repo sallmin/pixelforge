@@ -55,7 +55,7 @@ test('a generation is stored once and sent with its id as the idempotency key', 
 
     $this->actingAs($user)
         ->post(route('generations.store'), generationPayload())
-        ->assertRedirect(route('dashboard'));
+        ->assertRedirect(route('generations.index'));
 
     $generation = Generation::query()->sole();
 
@@ -97,7 +97,7 @@ test('reference image urls are sent with the generation', function () {
 
     $this->actingAs($user)->post(route('generations.store'), generationPayload([
         'reference_images' => ['https://example.com/style.png'],
-    ]))->assertRedirect(route('dashboard'));
+    ]))->assertRedirect(route('generations.index'));
 
     Http::assertSent(function ($request) {
         return str_ends_with($request->url(), '/generations')
@@ -116,7 +116,7 @@ test('an overloaded response is retried and still records one generation', funct
 
     $this->actingAs($user)
         ->post(route('generations.store'), generationPayload())
-        ->assertRedirect(route('dashboard'));
+        ->assertRedirect(route('generations.index'));
 
     $generation = Generation::query()->sole();
 
